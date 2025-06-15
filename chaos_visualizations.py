@@ -8,11 +8,11 @@ Created on Sat Jun 14 20:40:36 2025
 import numpy as np
 from scipy import integrate
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import streamlit as st
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 from pykoopman.common import lorenz
 
-st.title("Lorenz Attractors")
+st.title("Lorenz Attractors & Divergence")
 
 # — Sidebar controls —
 st.sidebar.header("Attractor 1 Initial Conditions")
@@ -34,12 +34,24 @@ t = np.linspace(0, t_final, n_steps)
 traj1 = integrate.odeint(lorenz, [x0_1, y0_1, z0_1], t)
 traj2 = integrate.odeint(lorenz, [x0_2, y0_2, z0_2], t)
 
-# — Plot —
-fig = plt.figure(figsize=(8, 6))
-ax = fig.add_subplot(111, projection='3d')
+# — Compute distance between them at each timepoint —
+dist = np.linalg.norm(traj2 - traj1, axis=1)
+
+# — Plot 3D attractors —
+fig1 = plt.figure(figsize=(8, 6))
+ax = fig1.add_subplot(111, projection='3d')
 ax.plot(traj1[:,0], traj1[:,1], traj1[:,2], label="Attractor 1", lw=1.5)
 ax.plot(traj2[:,0], traj2[:,1], traj2[:,2], label="Attractor 2", alpha=0.7, lw=1.5)
-ax.set_title("Lorenz Attractors: Sensitive Dependence")
+ax.set_title("Lorenz Attractors")
 ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_zlabel("z")
 ax.legend()
-st.pyplot(fig)
+st.pyplot(fig1)
+
+# — Plot distance vs time —
+fig2 = plt.figure(figsize=(8, 3))
+plt.plot(t, dist, lw=2)
+plt.title("Distance Between Trajectories Over Time")
+plt.xlabel("Time")
+plt.ylabel("‖x₁(t) – x₂(t)‖")
+plt.tight_layout()
+st.pyplot(fig2)
