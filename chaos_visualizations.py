@@ -5,8 +5,6 @@ Created on Sat Jun 14 20:40:36 2025
 @author: Jason
 """
 
-!pip install pykoopman scipy ipywidgets
-
 import numpy as np
 from scipy import integrate
 import matplotlib.pyplot as plt
