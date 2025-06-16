@@ -128,9 +128,9 @@ elif module == "HAVOK Reconstruction":
     st.plotly_chart(fig3, use_container_width=True)
 
     # --- Delay-embedded Euclidean Error ---
-    Xt = x_series[warmup:warmup+max_idx]
-    Yt = y_series[warmup:warmup+max_idx]
-    Zt = z_series[warmup:warmup+max_idx]
+    Xt = X[warmup:warmup+max_idx, 0]
+    Yt = X[warmup:warmup+max_idx, 1]
+    Zt = X[warmup:warmup+max_idx, 2]
     true = np.stack([Xt, Yt, Zt], axis=1)
     pred_embedded = np.stack([X1, X2, X3], axis=1)
     embedded_error = np.linalg.norm(true - pred_embedded, axis=1)
