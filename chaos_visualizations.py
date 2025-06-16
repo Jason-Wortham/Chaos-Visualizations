@@ -129,8 +129,8 @@ elif module == "HAVOK Reconstruction":
 
     # --- Delay-embedded Euclidean Error ---
     Xt1 = x_series[warmup:warmup+max_idx]
-    Xt2 = x_series[warmup+lag:warmup+lag+max_idx]
-    Xt3 = x_series[warmup+2*lag:warmup+2*lag+max_idx]
+    Xt2 = y_series[warmup:warmup+max_idx]
+    Xt3 = z_series[warmup:warmup+max_idx]
     true_embedded = np.stack([Xt1, Xt2, Xt3], axis=1)
     pred_embedded = np.stack([X1, X2, X3], axis=1)
     embedded_error = np.linalg.norm(true_embedded - pred_embedded, axis=1)
