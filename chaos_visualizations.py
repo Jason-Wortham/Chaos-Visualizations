@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import pykoopman as pk
 from pykoopman.common import lorenz
-from pykoopman.observables import Polynomial
 import plotly.graph_objs as go
 
 # 1) Must be first Streamlit command
@@ -133,19 +132,20 @@ elif module == "HAVOK Reconstruction":
     st.plotly_chart(fig3, use_container_width=True)
 
 
-# 5) EDMD Reconstruction (full (x,y,z) only)
 else:
-    st.sidebar.header("EDMD: Initial Conditions & Settings")
+    st.sidebar.header("DMD: Initial Conditions & Settings")
 
+    # — state ICs —
     x0 = st.sidebar.slider("x₀", -10.0, 10.0, 1.0, 0.01)
     y0 = st.sidebar.slider("y₀", -10.0, 10.0, 1.0, 0.01)
     z0 = st.sidebar.slider("z₀", -10.0, 10.0, 1.0, 0.01)
 
-    dt_edmd      = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
-    t_final_edmd = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
-    t_eval       = np.arange(0, t_final_edmd, dt_edmd)
+    # — time settings —
+    dt_dmd      = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
+    t_final_dmd = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
+    t_eval      = np.arange(0, t_final_dmd, dt_dmd)
 
-    # integrate true Lorenz
+    # integrate the true Lorenz trajectory
     X = integrate.odeint(
         lorenz, [x0, y0, z0], t_eval,
         atol=1e-12, rtol=1e-12
@@ -154,39 +154,45 @@ else:
     if N < 2:
         st.error("Need at least 2 time points."); st.stop()
 
-    # lift with polynomial observables up to degree 3
-    poly = Polynomial(degree=3, include_bias=True)
-
-    # build & fit EDMD
-    edmd_model = pk.Koopman(
-        observables=poly,
-        regressor=pk.regression.EDMD(svd_rank=N-1),
+    # choose DMD rank
+    max_rank = N - 1
+    dmd_rank = st.sidebar.slider(
+        "DMD SVD rank", 1, max_rank, min(20, max_rank), 1
     )
-    edmd_model.fit(X[:-1], X[1:])
 
-    # **manual** one‑step iteration
+    # build & fit plain‐vanilla DMD (EDMD with identity observables)
+    dmd_model = pk.Koopman(
+        regressor=pk.regression.DMD(svd_rank=dmd_rank)
+    )
+    dmd_model.fit(X[:-1], X[1:])
+
+    # one‐step iterate to get a forecast
     X_pred = np.zeros_like(X)
     X_pred[0] = X[0]
     for k in range(1, N):
-        X_pred[k] = edmd_model.predict(
+        X_pred[k] = dmd_model.predict(
             X_pred[k-1].reshape(1, -1)
         )[0]
 
-    # plot full (x,y,z)
-    st.subheader("EDMD‑Predicted Lorenz State")
-    trace_s = go.Scatter3d(
+    # plot the DMD‐predicted trajectory in (x,y,z)
+    st.subheader("DMD‑Predicted Lorenz State")
+    trace = go.Scatter3d(
         x=X_pred[:,0],
         y=X_pred[:,1],
         z=X_pred[:,2],
         mode='lines',
-        line=dict(color='red', width=2),
-        name='EDMD'
+        line=dict(color='crimson', width=2),
+        name='DMD'
     )
-    fig_s = go.Figure([trace_s])
-    fig_s.update_layout(
-        scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'),
+    fig = go.Figure([trace])
+    fig.update_layout(
+        scene=dict(
+            xaxis_title='x_pred',
+            yaxis_title='y_pred',
+            zaxis_title='z_pred'
+        ),
         margin=dict(l=0, r=0, b=0, t=30),
-        title="EDMD Reconstructed Lorenz Attractor"
+        title="DMD Reconstructed Lorenz Attractor"
     )
-    st.plotly_chart(fig_s, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
 
