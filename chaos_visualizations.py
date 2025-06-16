@@ -120,24 +120,27 @@ elif module == "HAVOK Reconstruction":
             xaxis_title='x(t)',
             yaxis_title=f'x(t+{lag}·dt)',
             zaxis_title=f'x(t+{2*lag}·dt)',
-            camera=dict(
-                eye=dict(x=-1.5, y=0.45, z=0)
-            )
+            camera=dict(eye=dict(x=-1.5, y=0.45, z=0))
         ),
         margin=dict(l=0, r=0, b=0, t=30),
         title="HAVOK Reconstructed Time Delay Attractor"
     )
     st.plotly_chart(fig3, use_container_width=True)
 
-    # — HAVOK Error plot —
-    true_x = x_series[warmup:warmup+len(x_pred)]
-    error_h = np.abs(true_x - x_pred)
-    fig_err, ax_err = plt.subplots(figsize=(8,3))
-    ax_err.plot(t_sim, error_h, color='black', lw=1)
-    ax_err.set_xlabel("Time")
-    ax_err.set_ylabel("Reconstruction Error")
-    ax_err.set_title("HAVOK | Absolute Error: |x_true(t) - x_pred(t)|")
-    st.pyplot(fig_err)
+    # --- Delay-embedded Euclidean Error ---
+    Xt1 = x_series[warmup:warmup+max_idx]
+    Xt2 = x_series[warmup+lag:warmup+lag+max_idx]
+    Xt3 = x_series[warmup+2*lag:warmup+2*lag+max_idx]
+    true_embedded = np.stack([Xt1, Xt2, Xt3], axis=1)
+    pred_embedded = np.stack([X1, X2, X3], axis=1)
+    embedded_error = np.linalg.norm(true_embedded - pred_embedded, axis=1)
+
+    fig_delay_err, ax_delay_err = plt.subplots(figsize=(8,3))
+    ax_delay_err.plot(t_sim[:max_idx], embedded_error, color='darkorange', lw=1)
+    ax_delay_err.set_xlabel("Time")
+    ax_delay_err.set_ylabel("Embedding Error")
+    ax_delay_err.set_title("HAVOK | Delay-Embedded Euclidean Error")
+    st.pyplot(fig_delay_err)
 
 else:
     st.sidebar.header("DMD: Initial Conditions & Settings")
@@ -149,8 +152,7 @@ else:
     t_final_dmd = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
 
     t_eval = np.arange(0, t_final_dmd, dt_dmd)
-    X      = integrate.odeint(lorenz, [x0, y0, z0], t_eval,
-                              atol=1e-12, rtol=1e-12)
+    X      = integrate.odeint(lorenz, [x0, y0, z0], t_eval, atol=1e-12, rtol=1e-12)
     N = X.shape[0]
     if N < 2:
         st.error("Need at least 2 time points."); st.stop()
@@ -164,28 +166,20 @@ else:
         X_pred[k] = dmd_model.predict(X_pred[k-1].reshape(1,-1))[0]
 
     trace_s = go.Scatter3d(
-        x=X_pred[:,0],
-        y=X_pred[:,1],
-        z=X_pred[:,2],
-        mode='lines',
-        line=dict(color='red', width=2),
+        x=X_pred[:,0], y=X_pred[:,1], z=X_pred[:,2],
+        mode='lines', line=dict(color='red', width=2),
     )
     fig_s = go.Figure([trace_s])
     fig_s.update_layout(
         scene=dict(
-            xaxis_title='x',
-            yaxis_title='y',
-            zaxis_title='z',
-            camera=dict(
-                eye=dict(x=2, y=-1, z=0.2)
-            )
+            xaxis_title='x', yaxis_title='y', zaxis_title='z',
+            camera=dict(eye=dict(x=2, y=-1, z=0.2))
         ),
         margin=dict(l=0, r=0, b=0, t=30),
         title="DMD Predicted Lorenz State"
     )
     st.plotly_chart(fig_s, use_container_width=True)
 
-    # — DMD Error plot —
     error_dmd = np.linalg.norm(X - X_pred, axis=1)
     fig_dmd_err, ax_dmd_err = plt.subplots(figsize=(8,3))
     ax_dmd_err.plot(t_eval, error_dmd, color='black', lw=1)
@@ -193,3 +187,4 @@ else:
     ax_dmd_err.set_ylabel("‖X_true(t) – X_pred(t)‖")
     ax_dmd_err.set_title("DMD | Euclidean Reconstruction Error Over Time")
     st.pyplot(fig_dmd_err)
+
