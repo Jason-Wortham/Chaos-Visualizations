@@ -75,8 +75,8 @@ elif module == "HAVOK Reconstruction":
     dt        = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
     t_final_h = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
     max_steps = max(1, int(t_final_h / dt) - 1)
-    tau_steps = st.sidebar.number_input("Time Delay", 1, max_steps, 50, 1, format="%d")
-    embed_dim = st.sidebar.number_input("Embedding Dimension", 3, 100, 10, 1, format="%d")
+    tau_steps = st.sidebar.number_input("Time Delay", 1, max_steps, 17, 1, format="%d")
+    embed_dim = st.sidebar.number_input("Embedding Dimension", 3, 100, 6, 1, format="%d")
 
     t_h      = np.arange(0, t_final_h, dt)
     X        = integrate.odeint(lorenz, [x0, y0, z0], t_h, atol=1e-12, rtol=1e-12)
