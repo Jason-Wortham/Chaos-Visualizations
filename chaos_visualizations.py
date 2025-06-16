@@ -122,7 +122,7 @@ elif module == "HAVOK Reconstruction":
             zaxis_title=f'x(t+{2*lag}·dt)'
         ),
         margin=dict(l=0, r=0, b=0, t=30),
-        title="HAVOK Reconstructed Attractor"
+        title="HAVOK Reconstructed Time Delay Attractor"
     )
     st.plotly_chart(fig3, use_container_width=True)
     
@@ -151,7 +151,8 @@ else:
         X_pred[k] = dmd_model.predict(X_pred[k-1].reshape(1,-1))[0]
 
 
-    st.subheader("DMD‑Predicted Lorenz State")
+    margin=dict(l=0, r=0, b=0, t=30),
+    title="DMD Predicted Lorenz State"
     trace_s = go.Scatter3d(
         x=X_pred[:,0],
         y=X_pred[:,1],
