@@ -46,12 +46,16 @@ if module == "Attractors & Divergence":
     dist  = np.linalg.norm(traj2 - traj1, axis=1)
 
     # interactive 3D plot
-    trace1 = go.Scatter3d(x=traj1[:,0], y=traj1[:,1], z=traj1[:,2],
-                          mode='lines', line=dict(color='blue', width=2),
-                          name='Attractor 1')
-    trace2 = go.Scatter3d(x=traj2[:,0], y=traj2[:,1], z=traj2[:,2],
-                          mode='lines', line=dict(color='green', width=2),
-                          name='Attractor 2')
+    trace1 = go.Scatter3d(
+        x=traj1[:,0], y=traj1[:,1], z=traj1[:,2],
+        mode='lines', line=dict(color='blue', width=2),
+        name='Attractor 1'
+    )
+    trace2 = go.Scatter3d(
+        x=traj2[:,0], y=traj2[:,1], z=traj2[:,2],
+        mode='lines', line=dict(color='green', width=2),
+        name='Attractor 2'
+    )
     fig1 = go.Figure([trace1, trace2])
     fig1.update_layout(
         scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'),
@@ -79,13 +83,22 @@ else:
     dt        = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
     t_final_h = st.sidebar.number_input("Total time for HAVOK", 1.0, 200.0, 20.0, 1.0)
     max_steps = max(1, int(t_final_h / dt) - 1)
+
     tau_steps = st.sidebar.number_input(
-        "Time delay (steps of dt)", min_value=1, max_value=max_steps,
-        value=30, step=1, format="%d"
+        "Time delay (steps of dt)",
+        min_value=1,
+        max_value=max_steps,
+        value=30,
+        step=1,
+        format="%d"
     )
     embed_dim = st.sidebar.number_input(
-        "Embedding dimension m (≥3)", min_value=3, max_value=200,
-        value=100, step=1, format="%d"
+        "Embedding dimension m (≥3)",
+        min_value=3,
+        max_value=200,
+        value=10,
+        step=1,
+        format="%d"
     )
 
     # simulate “true” Lorenz
@@ -95,13 +108,30 @@ else:
     x_series = X[:, 0]
     N        = len(x_series)
 
-    # build HAVOK with row-delay = tau_steps
-    n_delays = embed_dim - 1
-    delay    = tau_steps
+    # define delays and warm‑up
+    delay     = tau_steps
+    n_delays  = embed_dim - 1
+    warmup    = delay * n_delays
+    effective = N - warmup
+
+    if effective < 1:
+        st.error(f"Not enough data: need >{warmup} points, have {N}.")
+        st.stop()
+
+    # maximum SVD rank
+    max_svd = min(n_delays, effective)
+    svd_rank = st.sidebar.number_input(
+        "SVD rank",
+        min_value=1,
+        max_value=max_svd,
+        value=max_svd,
+        step=1,
+        format="%d"
+    )
+
+    # build HAVOK
     TDC   = pk.observables.TimeDelay(delay=delay, n_delays=n_delays)
     Diff  = pk.differentiation.Derivative(kind='finite_difference', k=2)
-    max_delays = min(n_delays, N - (delay * n_delays))
-    svd_rank = int(st.sidebar.number_input("SVD rank", 2, n_delays, max_delays, 1))
     HAVOK = pk.regression.HAVOK(svd_rank=svd_rank, plot_sv=False)
 
     model = pk.KoopmanContinuous(
@@ -111,23 +141,19 @@ else:
     )
     model.fit(x_series.reshape(-1,1), dt=dt)
 
-    # seed and simulate
-    warmup = delay * n_delays
-    if warmup + 1 > N:
-        st.error(f"Need at least {warmup+1} points, have {N}.")
-        st.stop()
-
+    # seed & simulate
     seed   = x_series[:warmup+1].reshape(-1,1)
     t_sim  = t_h[warmup:] - t_h[warmup]
     u_full = model.regressor.forcing_signal.reshape(-1,1)
     u_sim  = u_full[:len(t_sim)]
     x_pred = model.simulate(seed, t_sim, u_sim).flatten()
 
-    # manual 3D embedding with lag = tau_steps
-    d = 3
-    lag = delay
-    T_eff    = len(x_pred)
-    max_idx  = T_eff - (d-1)*lag
+    # manual 3D embedding (lag = tau_steps)
+    d       = 3
+    lag     = delay
+    T_eff   = len(x_pred)
+    max_idx = T_eff - (d-1)*lag
+
     X1 = x_pred[             :max_idx]
     X2 = x_pred[lag          :lag+max_idx]
     X3 = x_pred[2*lag        :2*lag+max_idx]
