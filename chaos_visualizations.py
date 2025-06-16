@@ -151,8 +151,6 @@ else:
         X_pred[k] = dmd_model.predict(X_pred[k-1].reshape(1,-1))[0]
 
 
-    margin=dict(l=0, r=0, b=0, t=30),
-    title="DMD Predicted Lorenz State"
     trace_s = go.Scatter3d(
         x=X_pred[:,0],
         y=X_pred[:,1],
@@ -168,6 +166,7 @@ else:
             zaxis_title='z'
         ),
         margin=dict(l=0, r=0, b=0, t=30),
+        title="DMD Predicted Lorenz State"
     )
     st.plotly_chart(fig_s, use_container_width=True)
 
