@@ -126,15 +126,20 @@ elif module == "HAVOK Reconstruction":
     )
     st.plotly_chart(fig3, use_container_width=True)
 
-    # — HAVOK Error plot —
-    true_x = x_series[warmup:warmup+len(x_pred)]
-    error_h = np.abs(true_x - x_pred)
-    fig_err, ax_err = plt.subplots(figsize=(8,3))
-    ax_err.plot(t_sim, error_h, color='black', lw=1)
-    ax_err.set_xlabel("Time")
-    ax_err.set_ylabel("Reconstruction Error")
-    ax_err.set_title("HAVOK | Absolute Error: |x_true(t) - x_pred(t)|")
-    st.pyplot(fig_err)
+    # --- Delay-embedded Euclidean Error ---
+    Xt1 = x_series[warmup:warmup+max_idx]
+    Xt2 = x_series[warmup+lag:warmup+lag+max_idx]
+    Xt3 = x_series[warmup+2*lag:warmup+2*lag+max_idx]
+    true_embedded = np.stack([Xt1, Xt2, Xt3], axis=1)
+    pred_embedded = np.stack([X1, X2, X3], axis=1)
+    embedded_error = np.linalg.norm(true_embedded - pred_embedded, axis=1)
+
+    fig_delay_err, ax_delay_err = plt.subplots(figsize=(8,3))
+    ax_delay_err.plot(t_sim[:max_idx], embedded_error, color='darkorange', lw=1)
+    ax_delay_err.set_xlabel("Time")
+    ax_delay_err.set_ylabel("Embedding Error")
+    ax_delay_err.set_title("HAVOK | Delay-Embedded Euclidean Error")
+    st.pyplot(fig_delay_err)
 
 else:
     st.sidebar.header("DMD: Initial Conditions & Settings")
