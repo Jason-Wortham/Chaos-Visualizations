@@ -13,8 +13,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import pykoopman as pk
 from pykoopman.common import lorenz
 
-
-st.title("Lorenz Attractors & Divergence")
+st.set_page_config(layout="wide")
+st.title("Lorenz & HAVOK Explorer")
 
 st.sidebar.header("Attractor 1 Initial Conditions")
 x0_1 = st.sidebar.slider("x_0 (A1)", -10.0, 10.0, 1.0, 0.01)
@@ -51,11 +51,6 @@ plt.xlabel("Time")
 plt.ylabel("‖X_1(t) – X_2(t)‖")
 plt.tight_layout()
 st.pyplot(fig2)
-
-
-
-st.set_page_config(layout="wide")
-st.title("Lorenz & HAVOK Explorer")
 
 # --- attractor initial conditions (shared) ---
 st.sidebar.header("Attractor Initial Conditions")
