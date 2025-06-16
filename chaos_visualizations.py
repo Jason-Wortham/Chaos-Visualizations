@@ -11,6 +11,7 @@ import streamlit as st
 import pykoopman as pk
 from pykoopman.common import lorenz
 import plotly.graph_objs as go
+from pykoopman.observables import Polynomial
 
 # 1) Must be first Streamlit command
 st.set_page_config(layout="wide", page_title="Lorenz & Koopman Explorer")
