@@ -111,7 +111,7 @@ elif module == "HAVOK Reconstruction":
 
     trace_h = go.Scatter3d(
         x=X1, y=X2, z=X3,
-        mode='lines', line=dict(color='firebrick', width=2),
+        mode='lines', line=dict(color='steelblue', width=2),
         name='HAVOK'
     )
     fig3 = go.Figure([trace_h])
@@ -119,7 +119,10 @@ elif module == "HAVOK Reconstruction":
         scene=dict(
             xaxis_title='x(t)',
             yaxis_title=f'x(t+{lag}·dt)',
-            zaxis_title=f'x(t+{2*lag}·dt)'
+            zaxis_title=f'x(t+{2*lag}·dt)',
+            camera=dict(
+                eye=dict(x=1.5, y=1.5, z=1.0)
+            )
         ),
         margin=dict(l=0, r=0, b=0, t=30),
         title="HAVOK Reconstructed Time Delay Attractor"
