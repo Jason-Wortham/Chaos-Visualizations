@@ -87,7 +87,6 @@ else:
         "Embedding dimension m (≥3)", min_value=3, max_value=200,
         value=100, step=1, format="%d"
     )
-    svd_rank = int(st.sidebar.number_input("SVD rank", 2, n_delays, n_delays, 1))
 
     # simulate “true” Lorenz
     t_h      = np.arange(0, t_final_h, dt)
@@ -101,6 +100,7 @@ else:
     delay    = tau_steps
     TDC   = pk.observables.TimeDelay(delay=delay, n_delays=n_delays)
     Diff  = pk.differentiation.Derivative(kind='finite_difference', k=2)
+    svd_rank = int(st.sidebar.number_input("SVD rank", 2, n_delays, n_delays, 1))
     HAVOK = pk.regression.HAVOK(svd_rank=svd_rank, plot_sv=False)
 
     model = pk.KoopmanContinuous(
