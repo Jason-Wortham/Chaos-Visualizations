@@ -54,10 +54,7 @@ if module == "Attractors and Divergence":
     fig1.update_layout(
         scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'),
         margin=dict(l=0, r=0, b=0, t=30),
-        title="Lorenz Attractors",
-        camera=dict(
-            eye=dict(x=-15, y=15, z=2)
-        )
+        title="Lorenz Attractors"
     )
     st.plotly_chart(fig1, use_container_width=True)
 
