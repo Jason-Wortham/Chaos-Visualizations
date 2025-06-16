@@ -150,49 +150,36 @@ elif module == "HAVOK Reconstruction":
 # ----------------------------------------------------------------
 # 5) EDMD Reconstruction (continuous‐time on x only + delay‐embed)
 # ----------------------------------------------------------------
+# … inside your Streamlit app …
 else:  # module == "EDMD Reconstruction"
-    st.sidebar.header("EDMD: Initial Conditions & Settings")
-    x0 = st.sidebar.slider("x₀", -10.0, 10.0, 1.0, 0.01)
-    y0 = st.sidebar.slider("y₀", -10.0, 10.0, 1.0, 0.01)
-    z0 = st.sidebar.slider("z₀", -10.0, 10.0, 1.0, 0.01)
+    # … your dt, t_final, lag_steps, etc …
+    st.sidebar.text("EDMD uses a fixed dictionary of delays (no svd_rank)")
 
-    dt_edmd      = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
-    t_final_edmd = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
-    max_steps    = max(1, int(t_final_edmd / dt_edmd) - 1)
-    lag_steps    = st.sidebar.number_input("Delay (steps)", 1, max_steps, 30, 1, format="%d")
-    n_delays     = st.sidebar.number_input("Embedding dimension m", 3, 200, 100, 1, format="%d")
-    svd_rank_edmd= st.sidebar.number_input("SVD rank", 1, n_delays-1, n_delays-1, 1, format="%d")
-
-    # 1) simulate the true Lorenz and extract x(t)
+    # 1) simulate Lorenz and grab x(t)
     t_eval = np.arange(0, t_final_edmd, dt_edmd)
     X_full = integrate.odeint(lorenz, [x0, y0, z0], t_eval,
                               atol=1e-12, rtol=1e-12)
-    x_series = X_full[:,0]
+    x_series = X_full[:, 0]
 
-    # 2) build & fit continuous‐time EDMD on x only
-    TDC   = pk.observables.TimeDelay(delay=1, n_delays=n_delays-1)
-    Diff  = pk.differentiation.Derivative(kind='finite_difference', k=2)
-    EDMD  = pk.regression.EDMD(svd_rank=svd_rank_edmd, plot_sv=False)
+    # 2) build observables & regressor
+    TDC  = pk.observables.TimeDelay(delay=1, n_delays=n_delays-1)
+    Diff = pk.differentiation.Derivative(kind='finite_difference', k=2)
+    edmd = pk.regression.EDMD()                # <–– no args here
+
+    # 3) fit continuous-time model
     model = pk.KoopmanContinuous(
-        observables=TDC, differentiator=Diff, regressor=EDMD
+        observables=TDC,
+        differentiator=Diff,
+        regressor=edmd
     )
-    model.fit(x_series.reshape(-1,1), dt=dt_edmd)
+    model.fit(x_series.reshape(-1, 1), dt=dt_edmd)
 
-    # 3) simulate forward (zero‐based t for predict_evolution)
-    u       = model.regressor.forcing_signal
-    seed    = x_series[:n_delays].reshape(-1,1)
-    t_eff   = t_eval[n_delays:] - t_eval[n_delays]
-    x_pred  = model.predict_evolution(seed, t_eff, u).flatten()
-
-    # 4) plot the reconstructed 1D series vs original
-    st.subheader("EDMD Prediction vs True x₁")
-    fig4 = plt.figure(figsize=(10,4))
-    plt.plot(t_eval[n_delays:], x_series[n_delays:], '-b', label='True x₁')
-    plt.plot(t_eval[n_delays:], x_pred,      '--r', label='EDMD x₁ pred')
-    plt.xlabel("Time"); plt.ylabel("x₁")
-    plt.legend(); plt.tight_layout()
-    st.pyplot(fig4)
-
+    # 4) simulate forward
+    u      = model.regressor.forcing_signal
+    seed   = x_series[:n_delays].reshape(-1,1)
+    t_eff  = t_eval[n_delays:] - t_eval[n_delays]
+    x_pred = model.predict_evolution(seed, t_eff, u).flatten()
+    
     # 5) build & plot the 3‑coordinate delay embedding of x_pred
     st.subheader("EDMD Delay‑Embedding (m=3)")
     lag = lag_steps
