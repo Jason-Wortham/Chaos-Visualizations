@@ -121,7 +121,7 @@ elif module == "HAVOK Reconstruction":
             yaxis_title=f'x(t+{lag}·dt)',
             zaxis_title=f'x(t+{2*lag}·dt)',
             camera=dict(
-                eye=dict(x=-0.5, y=0.15, z=0)
+                eye=dict(x=-1.5, y=0.45, z=0)
             )
         ),
         margin=dict(l=0, r=0, b=0, t=30),
@@ -177,7 +177,7 @@ else:
             yaxis_title='y',
             zaxis_title='z',
             camera=dict(
-                eye=dict(x=10, y=-5, z=2)
+                eye=dict(x=2, y=-1, z=0.2)
             )
         ),
         margin=dict(l=0, r=0, b=0, t=30),
