@@ -18,7 +18,7 @@ st.title("Chaos and Reconstruction Explorer")
 
 module = st.sidebar.radio(
     "Select Module",
-    ["Attractors & Divergence", "HAVOK Reconstruction", "DMD Reconstruction"],
+    ["Attractors and Divergence", "HAVOK Reconstruction", "DMD Reconstruction"],
     key="which_module",
 )
 
