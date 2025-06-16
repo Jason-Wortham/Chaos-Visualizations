@@ -43,22 +43,20 @@ if module == "Attractors & Divergence":
         "n_steps", 100, 10_000, 5_000, 100, key="n_steps_div"
     )
 
-    # compute two Lorenz trajectories
+    # simulate two Lorenz trajectories
     t     = np.linspace(0, t_final, n_steps)
     traj1 = integrate.odeint(lorenz, [x0_1, y0_1, z0_1], t)
     traj2 = integrate.odeint(lorenz, [x0_2, y0_2, z0_2], t)
     dist  = np.linalg.norm(traj2 - traj1, axis=1)
 
-    # interactive 3D plot
+    # interactive 3D
     trace1 = go.Scatter3d(
         x=traj1[:,0], y=traj1[:,1], z=traj1[:,2],
-        mode='lines', line=dict(color='blue', width=2),
-        name='Attractor 1'
+        mode='lines', line=dict(color='blue', width=2), name='Attractor 1'
     )
     trace2 = go.Scatter3d(
         x=traj2[:,0], y=traj2[:,1], z=traj2[:,2],
-        mode='lines', line=dict(color='green', width=2),
-        name='Attractor 2'
+        mode='lines', line=dict(color='green', width=2), name='Attractor 2'
     )
     fig1 = go.Figure([trace1, trace2])
     fig1.update_layout(
@@ -68,7 +66,7 @@ if module == "Attractors & Divergence":
     )
     st.plotly_chart(fig1, use_container_width=True)
 
-    # static divergence plot
+    # static divergence
     fig2 = plt.figure(figsize=(8,3))
     plt.plot(t, dist, color='red', lw=2)
     plt.xlabel("Time"); plt.ylabel("‖X₁(t)–X₂(t)‖")
@@ -99,26 +97,26 @@ else:
         "Total time for HAVOK", 1.0, 200.0, 20.0, 1.0, key="t_final_havok"
     )
 
-    # simulate the “true” Lorenz
+    # simulate “true” Lorenz
     t_h      = np.arange(0, t_final_h, dt)
     X        = integrate.odeint(lorenz, [x0, y0, z0], t_h,
                                 atol=1e-12, rtol=1e-12)
     x_series = X[:, 0]
     N        = len(x_series)
 
-    # build the HAVOK model with row‐delay = tau/dt
+    # build HAVOK with row-delay = tau/dt
     delay_steps = max(1, int(tau / dt))
     n_delays    = embed_dim - 1
+
+    # ensure enough data for fit
+    min_pts = delay_steps * n_delays + 1
+    if N < min_pts:
+        st.error(f"Need ≥{min_pts} points; you have {N}. Increase t_final or decrease τ/m.")
+        st.stop()
 
     TDC   = pk.observables.TimeDelay(delay=delay_steps, n_delays=n_delays)
     Diff  = pk.differentiation.Derivative(kind='finite_difference', k=2)
     HAVOK = pk.regression.HAVOK(svd_rank=n_delays, plot_sv=False)
-
-    # ensure enough data for transform
-    min_samples = delay_steps * n_delays + 1
-    if N < min_samples:
-        st.error(f"Need ≥{min_samples} points; you have {N}. Increase t_final or decrease τ/m.")
-        st.stop()
 
     model = pk.KoopmanContinuous(
         observables=TDC,
@@ -127,20 +125,20 @@ else:
     )
     model.fit(x_series.reshape(-1,1), dt=dt)
 
-    # align warmup vs. forcing
+    # warmup & simulation
     warmup = delay_steps * n_delays
     seed   = x_series[: warmup+1].reshape(-1,1)
     t_sim  = t_h[warmup:] - t_h[warmup]
 
     u_full = model.regressor.forcing_signal.reshape(-1,1)
-    # slice u to match t_sim length
-    u_sim  = u_full[: len(t_sim)]
+    u_sim  = u_full[: len(t_sim)]  # align lengths
 
-    # simulate
     x_pred = model.simulate(seed, t_sim, u_sim).flatten()
 
-    # full delay-embedding of x_pred
-    emb_pred = TDC.transform(x_pred.reshape(-1,1))
+    # combine seed + prediction for embedding
+    full_series = np.vstack([seed, x_pred.reshape(-1,1)])
+    emb_pred    = TDC.transform(full_series)  # now enough rows
+
     xs, ys, zs = emb_pred[:,0], emb_pred[:,1], emb_pred[:,2]
 
     # interactive 3D reconstruction
@@ -160,3 +158,4 @@ else:
         title="HAVOK Reconstructed Time‑Delay Attractor"
     )
     st.plotly_chart(fig3, use_container_width=True)
+
