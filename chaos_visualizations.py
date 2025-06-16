@@ -127,21 +127,6 @@ elif module == "HAVOK Reconstruction":
     )
     st.plotly_chart(fig3, use_container_width=True)
 
-    # --- Delay-embedded Euclidean Error ---
-    Xt = X[warmup:warmup+max_idx, 0]
-    Yt = X[warmup:warmup+max_idx, 1]
-    Zt = X[warmup:warmup+max_idx, 2]
-    true = np.stack([Xt, Yt, Zt], axis=1)
-    pred_embedded = np.stack([X1, X2, X3], axis=1)
-    embedded_error = np.linalg.norm(true - pred_embedded, axis=1)
-
-    fig_delay_err, ax_delay_err = plt.subplots(figsize=(8,3))
-    ax_delay_err.plot(t_sim[:max_idx], embedded_error, color='darkorange', lw=1)
-    ax_delay_err.set_xlabel("Time")
-    ax_delay_err.set_ylabel("Embedding Error")
-    ax_delay_err.set_title("HAVOK | Delay-Embedded Euclidean Error")
-    st.pyplot(fig_delay_err)
-
 else:
     st.sidebar.header("DMD: Initial Conditions & Settings")
     x0 = st.sidebar.slider("x_0", -10.0, 10.0, 1.0, 0.01)
@@ -179,12 +164,4 @@ else:
         title="DMD Predicted Lorenz State"
     )
     st.plotly_chart(fig_s, use_container_width=True)
-
-    error_dmd = np.linalg.norm(X - X_pred, axis=1)
-    fig_dmd_err, ax_dmd_err = plt.subplots(figsize=(8,3))
-    ax_dmd_err.plot(t_eval, error_dmd, color='black', lw=1)
-    ax_dmd_err.set_xlabel("Time")
-    ax_dmd_err.set_ylabel("‖X_true(t) – X_pred(t)‖")
-    ax_dmd_err.set_title("DMD | Euclidean Reconstruction Error Over Time")
-    st.pyplot(fig_dmd_err)
 
