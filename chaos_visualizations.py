@@ -85,9 +85,14 @@ else:
     dt        = st.sidebar.number_input(
         "dt", 1e-5, 1.0, 0.0001, 1e-5, format="%.4f", key="dt_havok"
     )
-    tau       = st.sidebar.number_input(
-        "Time delay τ", min_value=1, max_value=50.0,
-        value=1, step=1, format="%.4f", key="tau_havok"
+    tau = st.sidebar.number_input(
+        "Time delay τ (in steps of dt)",
+        min_value=1,
+        max_value=50,        
+        value=1,            
+        step=1,              
+        format="%d",         
+        key="tau_havok"
     )
     embed_dim = st.sidebar.number_input(
         "Embedding dimension m (≥3)",
