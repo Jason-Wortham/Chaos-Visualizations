@@ -138,6 +138,7 @@ elif module == "HAVOK Reconstruction":
     )
     st.plotly_chart(fig3, use_container_width=True)
 
+# …[all the imports and first two modules unchanged]…
 
 # 5) EDMD Reconstruction
 else:  # module == "EDMD Reconstruction"
@@ -148,60 +149,41 @@ else:  # module == "EDMD Reconstruction"
 
     dt_edmd      = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
     t_final_edmd = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
-    max_steps    = max(1, int(t_final_edmd / dt_edmd) - 1)
-    lag_steps    = st.sidebar.number_input("Delay (steps)", 1, max_steps, 30, 1, format="%d")
-    svd_rank_edmd= st.sidebar.number_input("EDMD SVD rank", 1, 3, 3, 1, format="%d")
 
     # simulate true Lorenz
     t_eval = np.arange(0, t_final_edmd, dt_edmd)
-    X      = integrate.odeint(lorenz, [x0, y0, z0], t_eval, atol=1e-12, rtol=1e-12)
-    N      = X.shape[0]
+    X      = integrate.odeint(lorenz, [x0, y0, z0], t_eval,
+                              atol=1e-12, rtol=1e-12)
+    N = X.shape[0]
     if N < 2:
         st.error("Need at least 2 time points."); st.stop()
 
     # fit EDMD
-    edmd_model = pk.Koopman(regressor=pk.regression.EDMD(svd_rank=svd_rank_edmd))
+    edmd_model = pk.Koopman(regressor=pk.regression.EDMD(svd_rank=3))
     edmd_model.fit(X[:-1], X[1:])
 
-    # iterate one‑step predictions forward
+    # iterate one-step predictions forward
     X_pred = np.zeros_like(X)
     X_pred[0] = X[0]
     for k in range(1, N):
         X_pred[k] = edmd_model.predict(X_pred[k-1].reshape(1,-1))[0]
 
-    # 1) full (x,y,z)
+    # only plot the full (x,y,z) EDMD result
     st.subheader("EDMD‑Predicted Lorenz State")
     trace_s = go.Scatter3d(
-        x=X_pred[:,0], y=X_pred[:,1], z=X_pred[:,2],
-        mode='lines', line=dict(color='red', width=2)
+        x=X_pred[:,0],
+        y=X_pred[:,1],
+        z=X_pred[:,2],
+        mode='lines',
+        line=dict(color='red', width=2),
     )
     fig_s = go.Figure([trace_s])
     fig_s.update_layout(
-        scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'),
-        margin=dict(l=0, r=0, b=0, t=30)
+        scene=dict(
+            xaxis_title='x',
+            yaxis_title='y',
+            zaxis_title='z'
+        ),
+        margin=dict(l=0, r=0, b=0, t=30),
     )
     st.plotly_chart(fig_s, use_container_width=True)
-
-    # 2) delay‑embedding of x_pred
-    st.subheader("EDMD Delay‑Embedding (m=3)")
-    max_idx = N - 2*lag_steps
-    ED1 = X_pred[:max_idx, 0]
-    ED2 = X_pred[lag_steps:lag_steps+max_idx, 0]
-    ED3 = X_pred[2*lag_steps:2*lag_steps+max_idx, 0]
-
-    trace_e = go.Scatter3d(
-        x=ED1, y=ED2, z=ED3,
-        mode='lines', line=dict(color='green', width=2)
-    )
-    fig_e = go.Figure([trace_e])
-    fig_e.update_layout(
-        scene=dict(
-            xaxis_title='x_pred(t)',
-            yaxis_title=f'x_pred(t+{lag_steps}·dt)',
-            zaxis_title=f'x_pred(t+{2*lag_steps}·dt)'
-        ),
-        margin=dict(l=0, r=0, b=0, t=30)
-    )
-    st.plotly_chart(fig_e, use_container_width=True)
-
-
