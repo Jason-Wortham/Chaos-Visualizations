@@ -20,7 +20,7 @@ st.title("Lorenz & Koopman Explorer")
 # 2) Module selector
 module = st.sidebar.radio(
     "Select Module",
-    ["Attractors & Divergence", "HAVOK Reconstruction", "EDMD Reconstruction"],
+    ["Attractors & Divergence", "HAVOK Reconstruction", "DMD Reconstruction"],
     key="which_module",
 )
 
