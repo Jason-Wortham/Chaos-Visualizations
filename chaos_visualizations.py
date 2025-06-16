@@ -13,28 +13,25 @@ import pykoopman as pk
 from pykoopman.common import lorenz
 import plotly.graph_objs as go
 
-# 1) Must be first Streamlit command
 st.set_page_config(layout="wide", page_title="Lorenz & Koopman Explorer")
 st.title("Lorenz & Koopman Explorer")
 
-# 2) Module selector
 module = st.sidebar.radio(
     "Select Module",
     ["Attractors & Divergence", "HAVOK Reconstruction", "DMD Reconstruction"],
     key="which_module",
 )
 
-# 3) Attractors & Divergence
 if module == "Attractors & Divergence":
     st.sidebar.header("Attractor 1 Initial Conditions")
-    x0_1 = st.sidebar.slider("x₀ (A1)", -10.0, 10.0, 1.0, 0.01)
-    y0_1 = st.sidebar.slider("y₀ (A1)", -10.0, 10.0, 1.0, 0.01)
-    z0_1 = st.sidebar.slider("z₀ (A1)", -10.0, 10.0, 1.0, 0.01)
+    x0_1 = st.sidebar.slider("x_0 (A1)", -10.0, 10.0, 1.0, 0.01)
+    y0_1 = st.sidebar.slider("y_0 (A1)", -10.0, 10.0, 1.0, 0.01)
+    z0_1 = st.sidebar.slider("z_0 (A1)", -10.0, 10.0, 1.0, 0.01)
 
     st.sidebar.header("Attractor 2 Initial Conditions")
-    x0_2 = st.sidebar.slider("x₀ (A2)", -10.0, 10.0, 1.0, 0.01)
-    y0_2 = st.sidebar.slider("y₀ (A2)", -10.0, 10.0, 1.0, 0.01)
-    z0_2 = st.sidebar.slider("z₀ (A2)", -10.0, 10.0, 1.0, 0.01)
+    x0_2 = st.sidebar.slider("x_0 (A2)", -10.0, 10.0, 1.0, 0.01)
+    y0_2 = st.sidebar.slider("y_0 (A2)", -10.0, 10.0, 1.0, 0.01)
+    z0_2 = st.sidebar.slider("z_0 (A2)", -10.0, 10.0, 1.0, 0.01)
 
     st.sidebar.header("Divergence Settings")
     t_final = st.sidebar.number_input("t_final", 1.0, 100.0, 50.0, 1.0)
@@ -68,20 +65,18 @@ if module == "Attractors & Divergence":
     plt.tight_layout()
     st.pyplot(fig2)
 
-
-# 4) HAVOK Reconstruction
 elif module == "HAVOK Reconstruction":
     st.sidebar.header("HAVOK: Initial Conditions")
-    x0 = st.sidebar.slider("x₀", -10.0, 10.0, 1.0, 0.01)
-    y0 = st.sidebar.slider("y₀", -10.0, 10.0, 1.0, 0.01)
-    z0 = st.sidebar.slider("z₀", -10.0, 10.0, 1.0, 0.01)
+    x0 = st.sidebar.slider("x_0", -10.0, 10.0, 1.0, 0.01)
+    y0 = st.sidebar.slider("y_0", -10.0, 10.0, 1.0, 0.01)
+    z0 = st.sidebar.slider("z_0", -10.0, 10.0, 1.0, 0.01)
 
     st.sidebar.header("HAVOK Settings")
     dt        = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
     t_final_h = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
     max_steps = max(1, int(t_final_h / dt) - 1)
-    tau_steps = st.sidebar.number_input("Delay (steps)", 1, max_steps, 30, 1, format="%d")
-    embed_dim = st.sidebar.number_input("Embedding m (≥3)", 3, 200, 10, 1, format="%d")
+    tau_steps = st.sidebar.number_input("Time Delay", 1, max_steps, 50, 1, format="%d")
+    embed_dim = st.sidebar.number_input("Embedding Dimension", 3, 100, 10, 1, format="%d")
 
     t_h      = np.arange(0, t_final_h, dt)
     X        = integrate.odeint(lorenz, [x0, y0, z0], t_h, atol=1e-12, rtol=1e-12)
@@ -130,19 +125,16 @@ elif module == "HAVOK Reconstruction":
         title="HAVOK Reconstructed Attractor"
     )
     st.plotly_chart(fig3, use_container_width=True)
-
-
-# 5) dmd Reconstruction
-else:  # module == "dmd Reconstruction"
+    
+else: 
     st.sidebar.header("dmd: Initial Conditions & Settings")
-    x0 = st.sidebar.slider("x₀", -10.0, 10.0, 1.0, 0.01)
-    y0 = st.sidebar.slider("y₀", -10.0, 10.0, 1.0, 0.01)
-    z0 = st.sidebar.slider("z₀", -10.0, 10.0, 1.0, 0.01)
+    x0 = st.sidebar.slider("x_0", -10.0, 10.0, 1.0, 0.01)
+    y0 = st.sidebar.slider("y_0", -10.0, 10.0, 1.0, 0.01)
+    z0 = st.sidebar.slider("z_0", -10.0, 10.0, 1.0, 0.01)
 
     dt_dmd      = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
     t_final_dmd = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
 
-    # simulate true Lorenz
     t_eval = np.arange(0, t_final_dmd, dt_dmd)
     X      = integrate.odeint(lorenz, [x0, y0, z0], t_eval,
                               atol=1e-12, rtol=1e-12)
@@ -150,17 +142,15 @@ else:  # module == "dmd Reconstruction"
     if N < 2:
         st.error("Need at least 2 time points."); st.stop()
 
-    # fit DMD
     dmd_model = pk.Koopman(regressor=pk.regression.EDMD(svd_rank=3))
     dmd_model.fit(X[:-1], X[1:])
 
-    # iterate one-step predictions forward
     X_pred = np.zeros_like(X)
     X_pred[0] = X[0]
     for k in range(1, N):
         X_pred[k] = dmd_model.predict(X_pred[k-1].reshape(1,-1))[0]
 
-    # only plot the full (x,y,z) DMD result
+
     st.subheader("DMD‑Predicted Lorenz State")
     trace_s = go.Scatter3d(
         x=X_pred[:,0],
