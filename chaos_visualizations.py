@@ -43,22 +43,20 @@ if module == "Attractors & Divergence":
         "n_steps", 100, 10_000, 5_000, 100, key="n_steps_div"
     )
 
-    # compute two Lorenz trajectories
+    # simulate both trajectories
     t     = np.linspace(0, t_final, n_steps)
     traj1 = integrate.odeint(lorenz, [x0_1, y0_1, z0_1], t)
     traj2 = integrate.odeint(lorenz, [x0_2, y0_2, z0_2], t)
     dist  = np.linalg.norm(traj2 - traj1, axis=1)
 
-    # interactive 3D plot
+    # interactive 3D Plotly
     trace1 = go.Scatter3d(
         x=traj1[:,0], y=traj1[:,1], z=traj1[:,2],
-        mode='lines', line=dict(color='blue', width=2),
-        name='Attractor 1'
+        mode='lines', line=dict(color='blue', width=2), name='Attractor 1'
     )
     trace2 = go.Scatter3d(
         x=traj2[:,0], y=traj2[:,1], z=traj2[:,2],
-        mode='lines', line=dict(color='green', width=2),
-        name='Attractor 2'
+        mode='lines', line=dict(color='green', width=2), name='Attractor 2'
     )
     fig1 = go.Figure([trace1, trace2])
     fig1.update_layout(
@@ -76,7 +74,6 @@ if module == "Attractors & Divergence":
     plt.tight_layout()
     st.pyplot(fig2)
 
-
 # 4) HAVOK Reconstruction branch
 else:
     st.sidebar.header("HAVOK: Initial Conditions")
@@ -93,21 +90,21 @@ else:
         value=0.03, step=dt, format="%.4f", key="tau_havok"
     )
     embed_dim = st.sidebar.number_input(
-        "Embedding dimension m (≥3)", min_value=3, max_value=200,
-        value=100, step=1, key="m_havok"
+        "Embedding dimension m (≥3)",
+        min_value=3, max_value=200, value=100, step=1, key="m_havok"
     )
     t_final_h = st.sidebar.number_input(
         "Total time for HAVOK", 1.0, 200.0, 20.0, 1.0, key="t_final_havok"
     )
 
-    # simulate “true” Lorenz
+    # simulate the “true” Lorenz
     t_h      = np.arange(0, t_final_h, dt)
     X        = integrate.odeint(lorenz, [x0, y0, z0], t_h,
                                 atol=1e-12, rtol=1e-12)
     x_series = X[:, 0]
     N        = len(x_series)
 
-    # build HAVOK with row-delay = tau/dt
+    # build the HAVOK model with row‐delay = tau/dt
     delay_steps = max(1, int(tau / dt))
     n_delays    = embed_dim - 1
 
@@ -122,7 +119,7 @@ else:
     )
     model.fit(x_series.reshape(-1,1), dt=dt)
 
-    # align warmup vs. forcing offset
+    # compute warmup and simulate
     warmup = delay_steps * n_delays
     if warmup + 1 > N:
         st.error(f"Need at least {warmup+1} points, have {N}.")
@@ -132,14 +129,14 @@ else:
     t_sim  = t_h[warmup:] - t_h[warmup]
 
     u_full = model.regressor.forcing_signal.reshape(-1,1)
-    offset = warmup - n_delays
-    u_sim  = u_full[offset : offset + len(t_sim)]
+    # slice forcing to match t_sim length
+    u_sim  = u_full[: len(t_sim)]
 
-    # simulate
+    # now they align
     x_pred = model.simulate(seed, t_sim, u_sim).flatten()
 
-    # full delay-embedding: rows spaced by tau, cols by dt
-    emb_pred = TDC.transform(x_pred.reshape(-1,1))  # shape = (len(t_sim), m)
+    # full delay‐embedding of x_pred (rows spaced by τ, columns by 1 step)
+    emb_pred = TDC.transform(x_pred.reshape(-1,1))
     xs, ys, zs = emb_pred[:,0], emb_pred[:,1], emb_pred[:,2]
 
     # interactive 3D reconstruction
@@ -152,12 +149,10 @@ else:
     fig3.update_layout(
         scene=dict(
             xaxis_title='x(t)',
-            yaxis_title=f'x(t – {tau:.3f})',
-            zaxis_title=f'x(t – {2*tau:.3f})'
+            yaxis_title=f'x(t – {delay_steps*dt:.3f})',
+            zaxis_title=f'x(t – {2*delay_steps*dt:.3f})'
         ),
         margin=dict(l=0, r=0, b=0, t=30),
         title="HAVOK Reconstructed Time‑Delay Attractor"
     )
     st.plotly_chart(fig3, use_container_width=True)
-
-
