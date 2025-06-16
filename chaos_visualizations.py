@@ -58,11 +58,11 @@ if module == "Attractors and Divergence":
     )
     st.plotly_chart(fig1, use_container_width=True)
 
-    fig2 = plt.figure(figsize=(8,3))
-    plt.plot(t, dist, color='red', lw=2)
-    plt.xlabel("Time"); plt.ylabel("‖X₁(t)–X₂(t)‖")
-    plt.title("Distance Between Trajectories")
-    plt.tight_layout()
+    fig2, ax2 = plt.subplots(figsize=(8,3))
+    ax2.plot(t, dist, color='red', lw=2)
+    ax2.set_xlabel("Time")
+    ax2.set_ylabel("‖X₁(t)–X₂(t)‖")
+    ax2.set_title("Distance Between Trajectories")
     st.pyplot(fig2)
 
 elif module == "HAVOK Reconstruction":
@@ -126,14 +126,14 @@ elif module == "HAVOK Reconstruction":
     )
     st.plotly_chart(fig3, use_container_width=True)
 
-    # — Error plot —
+    # — HAVOK Error plot —
     true_x = x_series[warmup:warmup+len(x_pred)]
     error_h = np.abs(true_x - x_pred)
-    fig_err = plt.figure(figsize=(8,3))
-    plt.plot(t_sim, error_h, color='black', lw=1)
-    plt.xlabel("Time"); plt.ylabel("Reconstruction Error")
-    plt.title("HAVOK | Absolute Error: |x_true(t) - x_pred(t)|")
-    plt.tight_layout()
+    fig_err, ax_err = plt.subplots(figsize=(8,3))
+    ax_err.plot(t_sim, error_h, color='black', lw=1)
+    ax_err.set_xlabel("Time")
+    ax_err.set_ylabel("Reconstruction Error")
+    ax_err.set_title("HAVOK | Absolute Error: |x_true(t) - x_pred(t)|")
     st.pyplot(fig_err)
 
 else:
@@ -179,13 +179,14 @@ else:
     )
     st.plotly_chart(fig_s, use_container_width=True)
 
-    # — Error plot —
+    # — DMD Error plot —
     error_dmd = np.linalg.norm(X - X_pred, axis=1)
-    fig_dmd_err = plt.figure(figsize=(8,3))
-    plt.plot(t_eval, error_dmd, color='black', lw=1)
-    plt.xlabel("Time"); plt.ylabel("‖X_true(t) – X_pred(t)‖")
-    plt.title("DMD | Euclidean Reconstruction Error Over Time")
-    plt.tight_layout()
+    fig_dmd_err, ax_dmd_err = plt.subplots(figsize=(8,3))
+    ax_dmd_err.plot(t_eval, error_dmd, color='black', lw=1)
+    ax_dmd_err.set_xlabel("Time")
+    ax_dmd_err.set_ylabel("‖X_true(t) – X_pred(t)‖")
+    ax_dmd_err.set_title("DMD | Euclidean Reconstruction Error Over Time")
     st.pyplot(fig_dmd_err)
+
 
 
