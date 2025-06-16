@@ -2,3 +2,4 @@ streamlit>=1.0
 pykoopman>=1.1.0
 scipy>=1.7.0
 matplotlib>=3.4.0
+plotly>=5.0.0
