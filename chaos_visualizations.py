@@ -177,7 +177,7 @@ else:
             yaxis_title='y',
             zaxis_title='z',
             camera=dict(
-                eye=dict(x=10, y=0, z=2)
+                eye=dict(x=10, y=-5, z=2)
             )
         ),
         margin=dict(l=0, r=0, b=0, t=30),
