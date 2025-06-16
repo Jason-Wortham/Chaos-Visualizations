@@ -24,7 +24,6 @@ module = st.sidebar.radio(
     key="which_module"
 )
 
-# 3) Attractors & Divergence branch
 if module == "Attractors & Divergence":
     # Sidebar controls
     st.sidebar.header("Attractor 1 Initial Conditions")
@@ -78,7 +77,6 @@ if module == "Attractors & Divergence":
     plt.tight_layout()
     st.pyplot(fig2)
 
-# 4) HAVOK Reconstruction branch
 else:
     # Sidebar controls
     st.sidebar.header("HAVOK: Initial Conditions")
@@ -102,14 +100,15 @@ else:
         "Total time for HAVOK", 1.0, 200.0, 50.0, 1.0, key="t_final_havok"
     )
 
-    # Simulate for training
+    # Simulate for training data
     t_h      = np.arange(0, t_final_h, dt)
     X        = integrate.odeint(lorenz, [x0, y0, z0], t_h)
     x_series = X[:, 0]
 
-    # Build & fit the HAVOK model
-    n_delays = embed_dim - 1
-    TDC   = pk.observables.TimeDelay(delay=1, n_delays=n_delays)
+    # Build & fit HAVOK with rows spaced by τ
+    n_delays    = embed_dim - 1
+    delay_steps = max(1, int(tau / dt))
+    TDC   = pk.observables.TimeDelay(delay=delay_steps, n_delays=n_delays)
     Diff  = pk.differentiation.Derivative(kind="finite_difference", k=2)
     HAVOK = pk.regression.HAVOK(svd_rank=n_delays, plot_sv=False)
 
@@ -129,7 +128,7 @@ else:
     u_sim  = u_full[:f]
     x_pred = model.simulate(x0_e, t_sim, u_sim).flatten()
 
-    # Build the full m‑dim delay embedding
+    # Full delay-embedding of x_pred (columns differ by τ)
     emb_pred = TDC.transform(x_pred.reshape(-1, 1))  # shape = (f, m)
     xs, ys, zs = emb_pred[:, 0], emb_pred[:, 1], emb_pred[:, 2]
 
@@ -143,11 +142,10 @@ else:
     fig3.update_layout(
         scene=dict(
             xaxis_title='x(t)',
-            yaxis_title=f'x(t – {1*dt:.3f})',
-            zaxis_title=f'x(t – {2*dt:.3f})'
+            yaxis_title=f'x(t – τ)',
+            zaxis_title=f'x(t – 2·τ)'
         ),
         margin=dict(l=0, r=0, b=0, t=30),
         title="HAVOK Reconstructed Time‑Delay Attractor"
     )
     st.plotly_chart(fig3, use_container_width=True)
-
