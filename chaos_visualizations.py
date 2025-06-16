@@ -43,20 +43,22 @@ if module == "Attractors & Divergence":
         "n_steps", 100, 10_000, 5_000, 100, key="n_steps_div"
     )
 
-    # simulate both trajectories
+    # compute two Lorenz trajectories
     t     = np.linspace(0, t_final, n_steps)
     traj1 = integrate.odeint(lorenz, [x0_1, y0_1, z0_1], t)
     traj2 = integrate.odeint(lorenz, [x0_2, y0_2, z0_2], t)
     dist  = np.linalg.norm(traj2 - traj1, axis=1)
 
-    # interactive 3D Plotly
+    # interactive 3D plot
     trace1 = go.Scatter3d(
         x=traj1[:,0], y=traj1[:,1], z=traj1[:,2],
-        mode='lines', line=dict(color='blue', width=2), name='Attractor 1'
+        mode='lines', line=dict(color='blue', width=2),
+        name='Attractor 1'
     )
     trace2 = go.Scatter3d(
         x=traj2[:,0], y=traj2[:,1], z=traj2[:,2],
-        mode='lines', line=dict(color='green', width=2), name='Attractor 2'
+        mode='lines', line=dict(color='green', width=2),
+        name='Attractor 2'
     )
     fig1 = go.Figure([trace1, trace2])
     fig1.update_layout(
@@ -112,6 +114,12 @@ else:
     Diff  = pk.differentiation.Derivative(kind='finite_difference', k=2)
     HAVOK = pk.regression.HAVOK(svd_rank=n_delays, plot_sv=False)
 
+    # ensure enough data for transform
+    min_samples = delay_steps * n_delays + 1
+    if N < min_samples:
+        st.error(f"Need ≥{min_samples} points; you have {N}. Increase t_final or decrease τ/m.")
+        st.stop()
+
     model = pk.KoopmanContinuous(
         observables=TDC,
         differentiator=Diff,
@@ -119,23 +127,19 @@ else:
     )
     model.fit(x_series.reshape(-1,1), dt=dt)
 
-    # compute warmup and simulate
+    # align warmup vs. forcing
     warmup = delay_steps * n_delays
-    if warmup + 1 > N:
-        st.error(f"Need at least {warmup+1} points, have {N}.")
-        st.stop()
-
     seed   = x_series[: warmup+1].reshape(-1,1)
     t_sim  = t_h[warmup:] - t_h[warmup]
 
     u_full = model.regressor.forcing_signal.reshape(-1,1)
-    # slice forcing to match t_sim length
+    # slice u to match t_sim length
     u_sim  = u_full[: len(t_sim)]
 
-    # now they align
+    # simulate
     x_pred = model.simulate(seed, t_sim, u_sim).flatten()
 
-    # full delay‐embedding of x_pred (rows spaced by τ, columns by 1 step)
+    # full delay-embedding of x_pred
     emb_pred = TDC.transform(x_pred.reshape(-1,1))
     xs, ys, zs = emb_pred[:,0], emb_pred[:,1], emb_pred[:,2]
 
@@ -149,8 +153,8 @@ else:
     fig3.update_layout(
         scene=dict(
             xaxis_title='x(t)',
-            yaxis_title=f'x(t – {delay_steps*dt:.3f})',
-            zaxis_title=f'x(t – {2*delay_steps*dt:.3f})'
+            yaxis_title=f'x(t – {tau:.3f})',
+            zaxis_title=f'x(t – {2*tau:.3f})'
         ),
         margin=dict(l=0, r=0, b=0, t=30),
         title="HAVOK Reconstructed Time‑Delay Attractor"
