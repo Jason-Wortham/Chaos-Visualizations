@@ -20,7 +20,7 @@ st.title("Lorenz & Koopman Explorer")
 # 2) Module selector
 module = st.sidebar.radio(
     "Select Module",
-    ["Attractors & Divergence", "HAVOK Reconstruction", "EDMD Reconstruction"],
+    ["Attractors & Divergence", "DMD Reconstruction"],
     key="which_module",
 )
 
@@ -40,18 +40,22 @@ if module == "Attractors & Divergence":
     t_final = st.sidebar.number_input("t_final", 1.0, 100.0, 50.0, 1.0)
     n_steps = st.sidebar.slider("n_steps", 100, 10_000, 5_000, 100)
 
-    t = np.linspace(0, t_final, n_steps)
+    # integrate two Lorenz trajectories
+    t     = np.linspace(0, t_final, n_steps)
     traj1 = integrate.odeint(lorenz, [x0_1, y0_1, z0_1], t)
     traj2 = integrate.odeint(lorenz, [x0_2, y0_2, z0_2], t)
     dist  = np.linalg.norm(traj2 - traj1, axis=1)
 
+    # interactive 3D plot
     trace1 = go.Scatter3d(
         x=traj1[:,0], y=traj1[:,1], z=traj1[:,2],
-        mode='lines', line=dict(color='blue', width=2), name='Attractor 1'
+        mode='lines', line=dict(color='blue', width=2),
+        name='Attractor 1'
     )
     trace2 = go.Scatter3d(
         x=traj2[:,0], y=traj2[:,1], z=traj2[:,2],
-        mode='lines', line=dict(color='green', width=2), name='Attractor 2'
+        mode='lines', line=dict(color='green', width=2),
+        name='Attractor 2'
     )
     fig1 = go.Figure([trace1, trace2])
     fig1.update_layout(
@@ -61,6 +65,7 @@ if module == "Attractors & Divergence":
     )
     st.plotly_chart(fig1, use_container_width=True)
 
+    # static divergence plot
     fig2 = plt.figure(figsize=(8,3))
     plt.plot(t, dist, color='red', lw=2)
     plt.xlabel("Time"); plt.ylabel("‖X₁(t)–X₂(t)‖")
@@ -68,70 +73,7 @@ if module == "Attractors & Divergence":
     plt.tight_layout()
     st.pyplot(fig2)
 
-
-# 4) HAVOK Reconstruction
-elif module == "HAVOK Reconstruction":
-    st.sidebar.header("HAVOK: Initial Conditions")
-    x0 = st.sidebar.slider("x₀", -10.0, 10.0, 1.0, 0.01)
-    y0 = st.sidebar.slider("y₀", -10.0, 10.0, 1.0, 0.01)
-    z0 = st.sidebar.slider("z₀", -10.0, 10.0, 1.0, 0.01)
-
-    st.sidebar.header("HAVOK Settings")
-    dt        = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
-    t_final_h = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
-    max_steps = max(1, int(t_final_h / dt) - 1)
-    tau_steps = st.sidebar.number_input("Delay (steps)", 1, max_steps, 30, 1, format="%d")
-    embed_dim = st.sidebar.number_input("Embedding m (≥3)", 3, 200, 10, 1, format="%d")
-
-    t_h      = np.arange(0, t_final_h, dt)
-    X        = integrate.odeint(lorenz, [x0, y0, z0], t_h, atol=1e-12, rtol=1e-12)
-    x_series = X[:,0]; N = len(x_series)
-
-    delay    = tau_steps
-    n_delays = embed_dim - 1
-    warmup   = delay * n_delays
-    if N < warmup+1:
-        st.error(f"Need ≥{warmup+1} points, have {N}."); st.stop()
-    effective = N - warmup
-    max_svd   = min(n_delays, effective)
-
-    svd_rank = st.sidebar.number_input("SVD rank", 1, max_svd, max_svd, 1, format="%d")
-
-    TDC   = pk.observables.TimeDelay(delay=delay, n_delays=n_delays)
-    Diff  = pk.differentiation.Derivative(kind='finite_difference', k=2)
-    HAVOK = pk.regression.HAVOK(svd_rank=svd_rank, plot_sv=False)
-    model = pk.KoopmanContinuous(observables=TDC, differentiator=Diff, regressor=HAVOK)
-    model.fit(x_series.reshape(-1,1), dt=dt)
-
-    seed   = x_series[:warmup+1].reshape(-1,1)
-    t_sim  = t_h[warmup:] - t_h[warmup]
-    u_sim  = model.regressor.forcing_signal.reshape(-1,1)[:len(t_sim)]
-    x_pred = model.simulate(seed, t_sim, u_sim).flatten()
-
-    d, lag = 3, delay
-    max_idx = len(x_pred) - (d-1)*lag
-    X1 = x_pred[:max_idx]
-    X2 = x_pred[ lag:lag+max_idx ]
-    X3 = x_pred[2*lag:2*lag+max_idx]
-
-    trace_h = go.Scatter3d(
-        x=X1, y=X2, z=X3,
-        mode='lines', line=dict(color='firebrick', width=2),
-        name='HAVOK'
-    )
-    fig3 = go.Figure([trace_h])
-    fig3.update_layout(
-        scene=dict(
-            xaxis_title='x(t)',
-            yaxis_title=f'x(t+{lag}·dt)',
-            zaxis_title=f'x(t+{2*lag}·dt)'
-        ),
-        margin=dict(l=0, r=0, b=0, t=30),
-        title="HAVOK Reconstructed Attractor"
-    )
-    st.plotly_chart(fig3, use_container_width=True)
-
-
+# 4) DMD Reconstruction
 else:
     st.sidebar.header("DMD: Initial Conditions & Settings")
 
@@ -160,19 +102,16 @@ else:
         "DMD SVD rank", 1, max_rank, min(20, max_rank), 1
     )
 
-    # build & fit plain‐vanilla DMD (EDMD with identity observables)
-    dmd_model = pk.Koopman(
-        regressor=pk.regression.DMD(svd_rank=dmd_rank)
-    )
+    # build & fit plain‐vanilla DMD (using the PyDMDRegressor)
+    dmd_reg = pk.regression.PyDMDRegressor(svd_rank=dmd_rank)
+    dmd_model = pk.Koopman(regressor=dmd_reg)
     dmd_model.fit(X[:-1], X[1:])
 
     # one‐step iterate to get a forecast
     X_pred = np.zeros_like(X)
     X_pred[0] = X[0]
     for k in range(1, N):
-        X_pred[k] = dmd_model.predict(
-            X_pred[k-1].reshape(1, -1)
-        )[0]
+        X_pred[k] = dmd_model.predict(X_pred[k-1].reshape(1, -1))[0]
 
     # plot the DMD‐predicted trajectory in (x,y,z)
     st.subheader("DMD‑Predicted Lorenz State")
@@ -195,4 +134,5 @@ else:
         title="DMD Reconstructed Lorenz Attractor"
     )
     st.plotly_chart(fig, use_container_width=True)
+
 
