@@ -125,9 +125,19 @@ elif module == "HAVOK Reconstruction":
         title="HAVOK Reconstructed Time Delay Attractor"
     )
     st.plotly_chart(fig3, use_container_width=True)
-    
-else: 
-    st.sidebar.header("dmd: Initial Conditions & Settings")
+
+    # — Error plot —
+    true_x = x_series[warmup:warmup+len(x_pred)]
+    error_h = np.abs(true_x - x_pred)
+    fig_err = plt.figure(figsize=(8,3))
+    plt.plot(t_sim, error_h, color='black', lw=1)
+    plt.xlabel("Time"); plt.ylabel("Reconstruction Error")
+    plt.title("HAVOK | Absolute Error: |x_true(t) - x_pred(t)|")
+    plt.tight_layout()
+    st.pyplot(fig_err)
+
+else:
+    st.sidebar.header("DMD: Initial Conditions & Settings")
     x0 = st.sidebar.slider("x_0", -10.0, 10.0, 1.0, 0.01)
     y0 = st.sidebar.slider("y_0", -10.0, 10.0, 1.0, 0.01)
     z0 = st.sidebar.slider("z_0", -10.0, 10.0, 1.0, 0.01)
@@ -150,7 +160,6 @@ else:
     for k in range(1, N):
         X_pred[k] = dmd_model.predict(X_pred[k-1].reshape(1,-1))[0]
 
-
     trace_s = go.Scatter3d(
         x=X_pred[:,0],
         y=X_pred[:,1],
@@ -169,5 +178,14 @@ else:
         title="DMD Predicted Lorenz State"
     )
     st.plotly_chart(fig_s, use_container_width=True)
+
+    # — Error plot —
+    error_dmd = np.linalg.norm(X - X_pred, axis=1)
+    fig_dmd_err = plt.figure(figsize=(8,3))
+    plt.plot(t_eval, error_dmd, color='black', lw=1)
+    plt.xlabel("Time"); plt.ylabel("‖X_true(t) – X_pred(t)‖")
+    plt.title("DMD | Euclidean Reconstruction Error Over Time")
+    plt.tight_layout()
+    st.pyplot(fig_dmd_err)
 
 
