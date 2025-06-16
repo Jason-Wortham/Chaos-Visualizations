@@ -22,7 +22,7 @@ module = st.sidebar.radio(
     key="which_module",
 )
 
-if module == "Attractors & Divergence":
+if module == "Attractors and Divergence":
     st.sidebar.header("Attractor 1 Initial Conditions")
     x0_1 = st.sidebar.slider("x_0 (Attractor 1)", -10.0, 10.0, 1.0, 0.01)
     y0_1 = st.sidebar.slider("y_0 (Attractor 1)", -10.0, 10.0, 1.0, 0.01)
