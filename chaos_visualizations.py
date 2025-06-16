@@ -14,7 +14,7 @@ from pykoopman.common import lorenz
 import plotly.graph_objs as go
 
 st.set_page_config(layout="wide", page_title="Lorenz & Koopman Explorer")
-st.title("Lorenz & Koopman Explorer")
+st.title("Chaos and Reconstruction Explorer")
 
 module = st.sidebar.radio(
     "Select Module",
