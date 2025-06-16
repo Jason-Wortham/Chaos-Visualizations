@@ -24,14 +24,14 @@ module = st.sidebar.radio(
 
 if module == "Attractors & Divergence":
     st.sidebar.header("Attractor 1 Initial Conditions")
-    x0_1 = st.sidebar.slider("x_0 (A1)", -10.0, 10.0, 1.0, 0.01)
-    y0_1 = st.sidebar.slider("y_0 (A1)", -10.0, 10.0, 1.0, 0.01)
-    z0_1 = st.sidebar.slider("z_0 (A1)", -10.0, 10.0, 1.0, 0.01)
+    x0_1 = st.sidebar.slider("x_0", -10.0, 10.0, 1.0, 0.01)
+    y0_1 = st.sidebar.slider("y_0", -10.0, 10.0, 1.0, 0.01)
+    z0_1 = st.sidebar.slider("z_0", -10.0, 10.0, 1.0, 0.01)
 
     st.sidebar.header("Attractor 2 Initial Conditions")
-    x0_2 = st.sidebar.slider("x_0 (A2)", -10.0, 10.0, 1.0, 0.01)
-    y0_2 = st.sidebar.slider("y_0 (A2)", -10.0, 10.0, 1.0, 0.01)
-    z0_2 = st.sidebar.slider("z_0 (A2)", -10.0, 10.0, 1.0, 0.01)
+    x0_2 = st.sidebar.slider("x_0", -10.0, 10.0, 1.0, 0.01)
+    y0_2 = st.sidebar.slider("y_0", -10.0, 10.0, 1.0, 0.01)
+    z0_2 = st.sidebar.slider("z_0", -10.0, 10.0, 1.0, 0.01)
 
     st.sidebar.header("Divergence Settings")
     t_final = st.sidebar.number_input("t_final", 1.0, 100.0, 50.0, 1.0)
