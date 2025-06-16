@@ -12,25 +12,71 @@ import pykoopman as pk
 from pykoopman.common import lorenz
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
+# 1) Page config must be first
 st.set_page_config(layout="wide", page_title="Lorenz & HAVOK Explorer")
 st.title("Lorenz & HAVOK Explorer")
 
-# Shared IC sliders
-st.sidebar.header("Initial Conditions")
-x0 = st.sidebar.slider("x₀", -10.0, 10.0, 1.0, 0.01, key="x0")
-y0 = st.sidebar.slider("y₀", -10.0, 10.0, 1.0, 0.01, key="y0")
-z0 = st.sidebar.slider("z₀", -10.0, 10.0, 1.0, 0.01, key="z0")
-
-module = st.sidebar.radio("Module",
+# 2) Module chooser
+module = st.sidebar.radio(
+    "Select Module",
     ["Attractors & Divergence", "HAVOK Reconstruction"],
-    key="module"
+    key="which_module"
 )
 
 if module == "Attractors & Divergence":
-    # … your divergence code unchanged …
-    pass
+    # — Divergence sidebar —
+    st.sidebar.header("Attractor 1 Initial Conditions")
+    x0_1 = st.sidebar.slider("x₀ (A1)", -10.0, 10.0, 1.0, 0.01, key="x0_1")
+    y0_1 = st.sidebar.slider("y₀ (A1)", -10.0, 10.0, 1.0, 0.01, key="y0_1")
+    z0_1 = st.sidebar.slider("z₀ (A1)", -10.0, 10.0, 1.0, 0.01, key="z0_1")
+
+    st.sidebar.header("Attractor 2 Initial Conditions")
+    x0_2 = st.sidebar.slider("x₀ (A2)", -10.0, 10.0, 1.0, 0.01, key="x0_2")
+    y0_2 = st.sidebar.slider("y₀ (A2)", -10.0, 10.0, 1.0, 0.01, key="y0_2")
+    z0_2 = st.sidebar.slider("z₀ (A2)", -10.0, 10.0, 1.0, 0.01, key="z0_2")
+
+    st.sidebar.header("Divergence Settings")
+    t_final = st.sidebar.number_input(
+        "t_final", min_value=1.0, max_value=100.0, value=50.0, step=1.0,
+        key="t_final_div"
+    )
+    n_steps = st.sidebar.slider(
+        "n_steps", 100, 10_000, 5_000, 100,
+        key="n_steps_div"
+    )
+
+    # — Compute & plot —
+    t = np.linspace(0, t_final, n_steps)
+    traj1 = integrate.odeint(lorenz, [x0_1, y0_1, z0_1], t)
+    traj2 = integrate.odeint(lorenz, [x0_2, y0_2, z0_2], t)
+    dist  = np.linalg.norm(traj2 - traj1, axis=1)
+
+    # 3D trajectories
+    fig1 = plt.figure(figsize=(8,6))
+    ax   = fig1.add_subplot(111, projection="3d")
+    ax.plot(*traj1.T, color="blue",  label="Attractor 1", lw=1.5)
+    ax.plot(*traj2.T, color="green", label="Attractor 2", lw=1.5)
+    ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_zlabel("z")
+    ax.set_title("Lorenz Attractors")
+    ax.legend()
+    st.pyplot(fig1)
+
+    # divergence vs time
+    fig2 = plt.figure(figsize=(8,3))
+    plt.plot(t, dist, color="red", lw=2)
+    plt.xlabel("Time"); plt.ylabel("‖X₁(t)–X₂(t)‖")
+    plt.title("Distance Between Trajectories Over Time")
+    plt.tight_layout()
+    st.pyplot(fig2)
+
 
 else:
+    # — HAVOK sidebar —
+    st.sidebar.header("Initial Condition (single attractor)")
+    x0 = st.sidebar.slider("x₀", -10.0, 10.0, 1.0, 0.01, key="x0_h")
+    y0 = st.sidebar.slider("y₀", -10.0, 10.0, 1.0, 0.01, key="y0_h")
+    z0 = st.sidebar.slider("z₀", -10.0, 10.0, 1.0, 0.01, key="z0_h")
+
     st.sidebar.header("HAVOK Settings")
     dt        = st.sidebar.number_input(
         "dt", 1e-4, 1.0, 0.01, 1e-4, format="%.4f", key="dt_havok"
@@ -42,20 +88,17 @@ else:
         "m", 2, 100, 10, 1, key="m_havok"
     )
     t_final_h = st.sidebar.number_input(
-        "Total time for HAVOK", 1.0, 200.0, 50.0, 1.0,
+        "Total time", 1.0, 200.0, 50.0, 1.0,
         key="t_final_havok"
     )
 
-    # integrate the Lorenz system
+    # — Prepare & fit HAVOK —
     t_h      = np.arange(0, t_final_h, dt)
     X        = integrate.odeint(lorenz, [x0, y0, z0], t_h)
     x_series = X[:, 0]
 
-    # compute number of delay steps = τ / dt
     n_delays = max(1, int(tau / dt))
-
-    # build a TimeDelay observable with delay=1 step
-    TDC = pk.observables.TimeDelay(delay=1, n_delays=n_delays)
+    TDC   = pk.observables.TimeDelay(delay=1, n_delays=n_delays)
     Diff  = pk.differentiation.Derivative(kind="finite_difference", k=2)
     HAVOK = pk.regression.HAVOK(svd_rank=n_delays, plot_sv=False)
 
@@ -64,16 +107,16 @@ else:
         differentiator=Diff,
         regressor=HAVOK
     )
-    model.fit(x_series.reshape(-1, 1), dt=dt)
+    model.fit(x_series.reshape(-1,1), dt=dt)
 
-    # simulate using the first (n_delays+1) points as warm‑up
-    x0_embed = x_series[: n_delays + 1].reshape(-1, 1)
+    # — Simulate: reshape u to (N,1) so lsim doesn’t complain —
+    x0_embed = x_series[: n_delays+1].reshape(-1,1)
     t_sim    = t_h[n_delays:] - t_h[n_delays]
-    u_sim    = model.regressor.forcing_signal[n_delays:]
+    u_sim    = model.regressor.forcing_signal[n_delays:].reshape(-1,1)
     x_pred   = model.simulate(x0_embed, t_sim, u_sim).flatten()
 
-    # plot
-    fig3 = plt.figure(figsize=(8, 4))
+    # — Plot reconstruction —
+    fig3 = plt.figure(figsize=(8,4))
     plt.plot(t_h[n_delays:], x_series[n_delays:], "-b", label="Original x")
     plt.plot(t_sim,           x_pred,            "--r", label="HAVOK Reconstructed")
     plt.xlabel("Time"); plt.ylabel("x")
