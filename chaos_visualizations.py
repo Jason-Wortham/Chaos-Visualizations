@@ -39,27 +39,32 @@ if module == "Attractors & Divergence":
     t_final = st.sidebar.number_input("t_final", 1.0, 100.0, 50.0, 1.0)
     n_steps = st.sidebar.slider("n_steps", 100, 10_000, 5_000, 100)
 
-    t = np.linspace(0, t_final, n_steps)
+    # simulate two Lorenz trajectories
+    t     = np.linspace(0, t_final, n_steps)
     traj1 = integrate.odeint(lorenz, [x0_1, y0_1, z0_1], t)
     traj2 = integrate.odeint(lorenz, [x0_2, y0_2, z0_2], t)
     dist  = np.linalg.norm(traj2 - traj1, axis=1)
 
+    # interactive 3D
     trace1 = go.Scatter3d(
         x=traj1[:,0], y=traj1[:,1], z=traj1[:,2],
-        mode='lines', line=dict(color='blue',width=2), name='Attractor 1'
+        mode='lines', line=dict(color='blue', width=2),
+        name='Attractor 1'
     )
     trace2 = go.Scatter3d(
         x=traj2[:,0], y=traj2[:,1], z=traj2[:,2],
-        mode='lines', line=dict(color='green',width=2), name='Attractor 2'
+        mode='lines', line=dict(color='green', width=2),
+        name='Attractor 2'
     )
-    fig = go.Figure([trace1, trace2])
-    fig.update_layout(
+    fig1 = go.Figure([trace1, trace2])
+    fig1.update_layout(
         scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'),
         margin=dict(l=0, r=0, b=0, t=30),
         title="Lorenz Attractors"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig1, use_container_width=True)
 
+    # divergence vs time
     fig2 = plt.figure(figsize=(8,3))
     plt.plot(t, dist, color='red', lw=2)
     plt.xlabel("Time"); plt.ylabel("‖X₁(t)–X₂(t)‖")
@@ -78,20 +83,21 @@ elif module == "HAVOK Reconstruction":
     st.sidebar.header("HAVOK Settings")
     dt        = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
     t_final_h = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
-    max_steps = max(1, int(t_final_h/dt) - 1)
+    max_steps = max(1, int(t_final_h / dt) - 1)
     tau_steps = st.sidebar.number_input("Delay (steps)", 1, max_steps, 30, 1, format="%d")
     embed_dim = st.sidebar.number_input("Embedding m (≥3)", 3, 200, 10, 1, format="%d")
 
+    # simulate true Lorenz
     t_h      = np.arange(0, t_final_h, dt)
     X        = integrate.odeint(lorenz, [x0, y0, z0], t_h, atol=1e-12, rtol=1e-12)
     x_series = X[:,0]; N = len(x_series)
 
+    # warm‑up
     delay    = tau_steps
     n_delays = embed_dim - 1
     warmup   = delay * n_delays
     if N < warmup+1:
-        st.error(f"Need ≥{warmup+1} points, have {N}.")
-        st.stop()
+        st.error(f"Need ≥{warmup+1} points, have {N}."); st.stop()
     effective = N - warmup
     max_svd   = min(n_delays, effective)
 
@@ -108,15 +114,19 @@ elif module == "HAVOK Reconstruction":
     u_sim  = model.regressor.forcing_signal.reshape(-1,1)[:len(t_sim)]
     x_pred = model.simulate(seed, t_sim, u_sim).flatten()
 
+    # first‑three delays
     d = 3; lag = delay
     max_idx = len(x_pred) - (d-1)*lag
     X1 = x_pred[:max_idx]
     X2 = x_pred[lag:lag+max_idx]
     X3 = x_pred[2*lag:2*lag+max_idx]
 
-    trace = go.Scatter3d(x=X1, y=X2, z=X3, mode='lines',
-                         line=dict(color='firebrick',width=2))
-    fig3 = go.Figure([trace])
+    trace_h = go.Scatter3d(
+        x=X1, y=X2, z=X3,
+        mode='lines', line=dict(color='firebrick', width=2),
+        name='HAVOK'
+    )
+    fig3 = go.Figure([trace_h])
     fig3.update_layout(
         scene=dict(
             xaxis_title='x(t)',
@@ -138,7 +148,7 @@ else:  # module == "EDMD Reconstruction"
 
     dt_edmd      = st.sidebar.number_input("dt", 1e-4, 1.0, 0.001, 1e-4, format="%.4f")
     t_final_edmd = st.sidebar.number_input("Total time", 1.0, 200.0, 20.0, 1.0)
-    max_steps    = max(1, int(t_final_edmd/dt_edmd) - 1)
+    max_steps    = max(1, int(t_final_edmd / dt_edmd) - 1)
     lag_steps    = st.sidebar.number_input("Delay (steps)", 1, max_steps, 30, 1, format="%d")
     svd_rank_edmd= st.sidebar.number_input("EDMD SVD rank", 1, 3, 3, 1, format="%d")
 
@@ -153,25 +163,17 @@ else:  # module == "EDMD Reconstruction"
     edmd_model = pk.Koopman(regressor=pk.regression.EDMD(svd_rank=svd_rank_edmd))
     edmd_model.fit(X[:-1], X[1:])
 
-    # extract discrete-time operator via system_matrices()
-    sm = edmd_model.system_matrices()
-    # sm may be dict or tuple
-    if isinstance(sm, dict):
-        K = sm['A']
-    else:
-        K = sm[0]
-
-    # iterate K forward
+    # iterate one‑step predictions forward
     X_pred = np.zeros_like(X)
     X_pred[0] = X[0]
     for k in range(1, N):
-        X_pred[k] = K @ X_pred[k-1]
+        X_pred[k] = edmd_model.predict(X_pred[k-1].reshape(1,-1))[0]
 
-    # Plot 1: full (x,y,z)
+    # 1) full (x,y,z)
     st.subheader("EDMD‑Predicted Lorenz State")
     trace_s = go.Scatter3d(
         x=X_pred[:,0], y=X_pred[:,1], z=X_pred[:,2],
-        mode='lines', line=dict(color='red',width=2)
+        mode='lines', line=dict(color='red', width=2)
     )
     fig_s = go.Figure([trace_s])
     fig_s.update_layout(
@@ -180,16 +182,16 @@ else:  # module == "EDMD Reconstruction"
     )
     st.plotly_chart(fig_s, use_container_width=True)
 
-    # Plot 2: delay-embedding of x_pred
+    # 2) delay‑embedding of x_pred
     st.subheader("EDMD Delay‑Embedding (m=3)")
     max_idx = N - 2*lag_steps
-    ED1 = X_pred[           :max_idx, 0]
-    ED2 = X_pred[lag_steps :lag_steps+max_idx, 0]
+    ED1 = X_pred[:max_idx, 0]
+    ED2 = X_pred[lag_steps:lag_steps+max_idx, 0]
     ED3 = X_pred[2*lag_steps:2*lag_steps+max_idx, 0]
 
     trace_e = go.Scatter3d(
         x=ED1, y=ED2, z=ED3,
-        mode='lines', line=dict(color='green',width=2)
+        mode='lines', line=dict(color='green', width=2)
     )
     fig_e = go.Figure([trace_e])
     fig_e.update_layout(
@@ -201,4 +203,3 @@ else:  # module == "EDMD Reconstruction"
         margin=dict(l=0, r=0, b=0, t=30)
     )
     st.plotly_chart(fig_e, use_container_width=True)
-
