@@ -151,7 +151,7 @@ else:  # module == "dmd Reconstruction"
         st.error("Need at least 2 time points."); st.stop()
 
     # fit DMD
-    dmd_model = pk.Koopman(regressor=pk.regression.dmd(svd_rank=3))
+    dmd_model = pk.Koopman(regressor=pk.regression.edmd(svd_rank=3))
     dmd_model.fit(X[:-1], X[1:])
 
     # iterate one-step predictions forward
