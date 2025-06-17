@@ -63,7 +63,7 @@ if module == "Attractors and Divergence":
     fig2, ax2 = plt.subplots(figsize = (8,3))
     ax2.plot(t, dist, color = 'red', lw = 2)
     ax2.set_xlabel("Time")
-    ax2.set_ylabel("‖X₁(t)–X₂(t)‖")
+    ax2.set_ylabel("‖X_1(t)–X_2(t)‖")
     ax2.set_title("Distance Between Trajectories")
     st.pyplot(fig2)
 
